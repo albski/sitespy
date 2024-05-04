@@ -1,4 +1,4 @@
-from os import path
+from os import path, makedirs
 from pathlib import Path
 from enum import Enum, unique
 
@@ -17,14 +17,6 @@ class Platform(Enum):
         raise ValueError(f"{platform_string} is not a valid platform")
 
 
-def create_dir(dir_paths: tuple[Path]) -> None:
-    try:
-        for p in dir_paths:
-            p.mkdir(parents=True, exist_ok=True)
-    except OSError as error:
-        print(f"Dir cannot be created: {error}")
-
-
 class PathManager:
     """
     Singleton manager for data and config paths.
@@ -36,17 +28,23 @@ class PathManager:
     def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
+            cls.__initialized = False
             return cls.__instance
         return cls.__instance
 
     def __init__(self, platform: Platform):
+        if self.__initialized:
+            return
+
         self.__platform = platform
         self.__app_dir: Path = PathManager.retrieve_app_dir(self.__platform)
         self.__config_file: Path = path.join(self.__app_dir, "config.json")
         self.__img_dir: Path = path.join(self.__app_dir, "img")
 
+        self.__initialized = True
+
     @staticmethod
-    def retrieve_app_dir(platform: Platform) -> tuple[Path]:
+    def retrieve_app_dir(platform: Platform) -> Path:
         match platform:
             case Platform.MAC:
                 user_dir = path.expanduser("~")
@@ -54,13 +52,12 @@ class PathManager:
                     path.join(user_dir, "Library", "Application Support", "sitespy")
                 )
 
-                # implement it DRY way when match serves more cases
                 if not app_dir.exists():
-                    create_dir(app_dir)
+                    makedirs(app_dir, exist_ok=True)
 
                 return app_dir
 
-        raise Exception(f"Couldn't retrieve app dir in {__name__}")
+        raise Exception(f"Couldn't retrieve app dir in {__name__} for {platform}")
 
     @property
     def app_dir(self) -> Path:
