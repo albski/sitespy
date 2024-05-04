@@ -1,7 +1,6 @@
 from os import path
 from pathlib import Path
 from enum import Enum, unique
-from sys import platform
 
 
 @unique
@@ -11,17 +10,25 @@ class Platform(Enum):
     LINUX = "linux"
 
     @classmethod
-    def from_string(cls, platform_string):
+    def from_string(cls, platform_string: str):
         for _, member in cls.__members__.items():
             if member.value == platform_string:
                 return member
         raise ValueError(f"{platform_string} is not a valid platform")
 
 
-class ConfigManager:
+def create_dir(dir_paths: tuple[Path]) -> None:
+    try:
+        for p in dir_paths:
+            p.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        print(f"Dir cannot be created: {error}")
+
+
+class PathManager:
     """
-    Singleton manager for config and data.
-    Supporting only Mac OS (Silicon) for prototype purposes.
+    Singleton manager for data and config paths.
+    Supporting only Mac OS (Silicon).
     """
 
     __instance = None
@@ -32,18 +39,37 @@ class ConfigManager:
             return cls.__instance
         return cls.__instance
 
-    def __init__(self):
-        self.__platform = Platform.from_string(platform())
-        self.__app_dir: Path = ConfigManager.retrieve_dirs
+    def __init__(self, platform: Platform):
+        self.__platform = platform
+        self.__app_dir: Path = PathManager.retrieve_app_dir(self.__platform)
+        self.__config_file: Path = path.join(self.__app_dir, "config.json")
+        self.__img_dir: Path = path.join(self.__app_dir, "img")
 
     @staticmethod
-    def retrieve_dirs(_platform: Platform) -> tuple[Path]:
-        match _platform:
+    def retrieve_app_dir(platform: Platform) -> tuple[Path]:
+        match platform:
             case Platform.MAC:
                 user_dir = path.expanduser("~")
-                app_dir = path.join(
-                    user_dir, "Library", "Application Support", "sitespy"
+                app_dir: Path = Path(
+                    path.join(user_dir, "Library", "Application Support", "sitespy")
                 )
+
+                # implement it DRY way when match serves more cases
+                if not app_dir.exists():
+                    create_dir(app_dir)
+
                 return app_dir
 
-        return Path("")
+        raise Exception(f"Couldn't retrieve app dir in {__name__}")
+
+    @property
+    def app_dir(self) -> Path:
+        return self.__app_dir
+
+    @property
+    def config_file(self) -> Path:
+        return self.__config_file
+
+    @property
+    def img_dir(self) -> Path:
+        return self.__img_dir
