@@ -34,12 +34,16 @@ class ConfigManager:
 
     def __init__(self):
         self.__platform = Platform.from_string(platform())
-        self.__app_dir: Path
+        self.__app_dir: Path = ConfigManager.retrieve_dirs
 
-    def _retrieve_dirs(self) -> None:
-        match self.__platform:
+    @staticmethod
+    def retrieve_dirs(_platform: Platform) -> tuple[Path]:
+        match _platform:
             case Platform.MAC:
                 user_dir = path.expanduser("~")
-                self.__app_dir = path.join(
+                app_dir = path.join(
                     user_dir, "Library", "Application Support", "sitespy"
                 )
+                return app_dir
+
+        return Path("")
