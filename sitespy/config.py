@@ -34,11 +34,11 @@ class ConfigManager:
     """
 
     def __init__(self):
-        self.__config_data = Config()
+        self.__config = Config()
         self.__subscribers: List[Callable] = []
         self.__loop = asyncio.get_running_loop()
 
-    def subscribe(self, callback):
+    def subscribe(self, callback: Callable):
         self.__subscribers.append(callback)
 
     def notify(self):
@@ -47,33 +47,33 @@ class ConfigManager:
 
     def to_dict(self) -> dict[Any, Any]:
         return {
-            "telegram": {"placeholder": self.__config_data.telegram.placeholder},
+            "telegram": {"placeholder": self.__config.telegram.placeholder},
             "spy_entries": [
                 {
                     "url": entry.url,
                     "interval_seconds": entry.interval_seconds,
                     "img_path": entry.img_path.as_posix(),
                 }
-                for entry in self.__config_data.spy_entries
+                for entry in self.__config.spy_entries
             ],
         }
 
     @property
     def telegram(self) -> Telegram:
-        return self.__config_data.telegram
+        return self.__config.telegram
 
     @telegram.setter
     def telegram(self, value: Telegram):
-        self.__config_data.telegram = value
+        self.__config.telegram = value
         self.notify()
 
     @property
     def spy_entries(self) -> List[SpyEntry]:
-        return self.__config_data.spy_entries
+        return self.__config.spy_entries
 
     @spy_entries.setter
     def spy_entries(self, value: List[SpyEntry]):
-        self.__config_data.spy_entries = value
+        self.__config.spy_entries = value
         self.notify()
 
 
@@ -154,10 +154,8 @@ if __name__ == "__main__":
 
         config_manager = ConfigManager()
         ConfigHandler(config_manager, path_manager)
-        config_manager.telegram = Telegram(placeholder="New Placeholder")
+        config_manager.telegram = Telegram(placeholder="123")
         print("Config updated.")
         await asyncio.sleep(2)
-        config_manager.telegram = Telegram(placeholder="xd")
-        await asyncio.sleep(3)
 
     asyncio.run(main())
