@@ -5,6 +5,7 @@ from sitespy import telegram as telegram_class
 from sitespy import utils
 from json import load as json_load
 from json import dump as json_dump
+from sys import exit as sys_exit
 import asyncio
 
 
@@ -19,19 +20,25 @@ class SpyEntry:
     img_path: Path
 
 
+@dataclass
+class ConfigData:
+    telegram: telegram_class.Telegram = telegram_class.Telegram(placeholder="")
+    spy_entries: List[SpyEntry] = []
+
+
 class Config:
     def __init__(self):
-        self.__telegram: telegram_class.Telegram
-        self.__spy_entries: List[SpyEntry]
+        self.__config_data: ConfigData = ConfigData()
+
         self.__subscribers: List[asyncio.Queue] = []
 
     @classmethod
     def from_dict(cls, dict_from_json: dict[Any, Any]) -> Self:
         instance = cls()
 
-        instance.__telegram = telegram_class.Telegram(placeholder="123")
+        instance.__config_data.telegram = telegram_class.Telegram(placeholder="123")
 
-        instance.__spy_entries = [
+        instance.__config_data.spy_entries = [
             SpyEntry(
                 url=entry["url"],
                 interval_seconds=entry["interval_seconds"],
@@ -51,7 +58,7 @@ class Config:
                     "interval_seconds": entry.interval_seconds,
                     "img_path": entry.img_path.as_posix(),
                 }
-                for entry in self.__spy_entries
+                for entry in self.__config_data.spy_entries
             ],
         }
 
@@ -67,20 +74,20 @@ class Config:
 
     @property
     def telegram(self) -> telegram_class.Telegram:
-        return self.__telegram
+        return self.__config_data.telegram
 
     @telegram.setter
     def telegram(self, value: telegram_class.Telegram):
-        self.__telegram = value
+        self.__config_data.telegram = value
         self.notify()
 
     @property
     def spy_entries(self) -> List[SpyEntry]:
-        return self.__spy_entries
+        return self.__config_data.spy_entries
 
     @spy_entries.setter
     def spy_entries(self, value: List[SpyEntry]):
-        self.__spy_entries = value
+        self.__config_data.spy_entries = value
         self.notify()
 
 
@@ -102,7 +109,7 @@ class ConfigManager:
         self.path_manager = path_manager
         self.config.subscribe(self.update)
 
-        # TODO: handle cases where json (self.path_manager.config_file) has not been initialized or it is not compilant to Config class
+        self.init_config_json()
 
         try:
             self.open = open(self.path_manager.config_file, "r+")
@@ -114,6 +121,22 @@ class ConfigManager:
             # TODO: handle cases when those are None
 
         self.__initialized = True
+
+    def init_config_json(self):
+        if not self.path_manager.config_file.exists():
+            try:
+                with open(self.path_manager.config_file, "w") as file:
+                    json_dump(self.config.to_dict(), file, indent=4)
+                return
+            except IOError as error:
+                print(f"Failed to write to the config file: {error}")
+                sys_exit(1)
+
+        self.validate_config_json()
+
+    def validate_config_json(self):
+        # TODO: validate config
+        pass
 
     async def update(self, message):
         if message == "UPDATED" and self.open is not None:
