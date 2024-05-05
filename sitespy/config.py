@@ -1,19 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List, Self
-from sitespy import telegram as telegram_class
-from sitespy import utils
+from typing import Any, List
 from json import load as json_load
 from json import dump as json_dump
 from sys import exit as sys_exit
 import asyncio
 
+from .telegram import Telegram
+from . import utils
+
 
 @dataclass
 class SpyEntry:
-    """
-    SpyEntry represents a site to spy on
-    """
+    """SpyEntry represents a site to spy on."""
 
     url: str
     interval_seconds: float
@@ -22,36 +21,25 @@ class SpyEntry:
 
 @dataclass
 class ConfigData:
-    telegram: telegram_class.Telegram = telegram_class.Telegram(placeholder="")
-    spy_entries: List[SpyEntry] = []
+    """ConfigData represents a structure of data in config.json."""
+
+    telegram: Telegram = field(default_factory=lambda: Telegram(placeholder=""))
+    spy_entries: List[SpyEntry] = field(default_factory=list)
 
 
 class Config:
+    """
+    It acts as a publisher to ConfigManager and other subscribers.
+    The class publishes "UPDATED" when change in config occured.
+    """
+
     def __init__(self):
         self.__config_data: ConfigData = ConfigData()
-
         self.__subscribers: List[asyncio.Queue] = []
-
-    @classmethod
-    def from_dict(cls, dict_from_json: dict[Any, Any]) -> Self:
-        instance = cls()
-
-        instance.__config_data.telegram = telegram_class.Telegram(placeholder="123")
-
-        instance.__config_data.spy_entries = [
-            SpyEntry(
-                url=entry["url"],
-                interval_seconds=entry["interval_seconds"],
-                img_path=Path(entry["img_path"]),
-            )
-            for entry in dict_from_json.get("spy_entries", [])
-        ]
-
-        return instance
 
     def to_dict(self) -> dict[Any, Any]:
         return {
-            "telegram": {"placeholder": "123"},
+            "telegram": {"placeholder": self.__config_data.telegram.placeholder},
             "spy_entries": [
                 {
                     "url": entry.url,
@@ -73,11 +61,11 @@ class Config:
         self.__subscribers.remove(subscriber)
 
     @property
-    def telegram(self) -> telegram_class.Telegram:
+    def telegram(self) -> Telegram:
         return self.__config_data.telegram
 
     @telegram.setter
-    def telegram(self, value: telegram_class.Telegram):
+    def telegram(self, value: Telegram):
         self.__config_data.telegram = value
         self.notify()
 
@@ -92,6 +80,10 @@ class Config:
 
 
 class ConfigManager:
+    """
+    ConfigManager class handles all intermediaries between config in cache and config.json.
+    """
+
     __instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -165,10 +157,15 @@ if __name__ == "__main__":
     with open(path_manager.config_file, "r") as file:
         dict_from_json = json_load(file)
 
-    config = Config.from_dict(dict_from_json)
+    config = Config()
     config_manager = ConfigManager(config, path_manager)
+    print(config.telegram)
 
     async def simulate_config_update():
-        await asyncio.sleep(5)
+        config.telegram = Telegram("123")
+        await asyncio.sleep(1)
+        print(config.telegram)
 
     loop.run_until_complete(simulate_config_update())
+    while True:
+        pass
