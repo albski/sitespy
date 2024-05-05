@@ -29,8 +29,8 @@ class Config:
 
 class ConfigManager:
     """
-    ConfigManager manages changes in config in cache.
-    It is a publisher to Callable objects.
+    ConfigManager manages config changes in cache.
+    It is a publisher to Callable objects, who notifies about config changes.
     """
 
     def __init__(self):
@@ -108,9 +108,7 @@ class ConfigHandler:
             self.json = json_load(self.open)
         except IOError as error:
             print(f"Failed to open or parse the config file: {error}")
-            self.open = None
-            self.json = None
-            # TODO: handle cases when those are None
+            sys_exit(1)
 
         self.__initialized = True
 
@@ -126,18 +124,17 @@ class ConfigHandler:
 
         self.validate_config_json()
 
-    def validate_config_json(self):
-        # TODO: validate config
-        pass
+    def validate_config_json(self) -> bool:
+        # TODO: deep compare if the structure of the Config is same as config.json
+        return True
 
     async def update_config(self):
         """Asynchronously update the config file upon notification."""
         await asyncio.sleep(0)
-        if self.open:
-            self.open.seek(0)
-            self.open.truncate()
-            json_dump(self.config.to_dict(), self.open, indent=4)
-            self.open.flush()
+        self.open.seek(0)
+        self.open.truncate()
+        json_dump(self.config.to_dict(), self.open, indent=4)
+        self.open.flush()
 
     def __enter__(self):
         return self
@@ -155,12 +152,12 @@ if __name__ == "__main__":
         platform = Platform.from_string(sys.platform)
         path_manager = PathManager(platform)
 
-        config = ConfigManager()
-        ConfigHandler(config, path_manager)
-        config.telegram = Telegram(placeholder="New Placeholder")
+        config_manager = ConfigManager()
+        ConfigHandler(config_manager, path_manager)
+        config_manager.telegram = Telegram(placeholder="New Placeholder")
         print("Config updated.")
         await asyncio.sleep(2)
-        config.telegram = Telegram(placeholder="xd")
+        config_manager.telegram = Telegram(placeholder="xd")
         await asyncio.sleep(3)
 
     asyncio.run(main())
