@@ -1,3 +1,3 @@
-sitespy is a terminal-based detector for visual website changes in its early development stage
+### sitespy is a terminal-driven visual change detector for websites
 
-The project's mission is to provide [Visualping](https://visualping.io/)-like service accessible for as little cost as possible.
+The project's mission is to provide [Visualping](https://visualping.io/)-like tool accessible for as little cost as possible.
