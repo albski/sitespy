@@ -38,8 +38,8 @@ class PathManager:
 
         self.__platform = platform
         self.__app_dir: Path = PathManager.retrieve_app_dir(self.__platform)
-        self.__config_file: Path = path.join(self.__app_dir, "config.json")
-        self.__img_dir: Path = path.join(self.__app_dir, "img")
+        self.__config_file: Path = self.__app_dir / "config.json"
+        self.__img_dir: Path = self.__app_dir / "img"
 
         self.__initialized = True
 
