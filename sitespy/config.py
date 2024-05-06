@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List, Callable
+import re
+from typing import Any, List, Callable, Dict, Tuple
 from json import load as json_load
 from json import dump as json_dump
 from sys import exit as sys_exit
@@ -29,12 +30,13 @@ class Config:
 
 class ConfigManager:
     """
-    ConfigManager manages config changes in cache.
+    ConfigManager manages operations on config.
     It is a publisher to Callable objects, who notifies about config changes.
     """
 
     def __init__(self):
         self.__config = Config()
+
         self.__subscribers: List[Callable] = []
         self.__loop = asyncio.get_running_loop()
 
@@ -45,7 +47,7 @@ class ConfigManager:
         for subscriber in self.__subscribers:
             self.__loop.create_task(subscriber())
 
-    def to_dict(self) -> dict[Any, Any]:
+    def to_json_dict(self) -> dict[Any, Any]:
         return {
             "telegram": {"placeholder": self.__config.telegram.placeholder},
             "spy_entries": [
@@ -57,6 +59,30 @@ class ConfigManager:
                 for entry in self.__config.spy_entries
             ],
         }
+
+    def from_json_dict(self, json_dict: Dict) -> Config:
+        # validate if json_dict is compliant to Config structure
+
+        return Config(
+            telegram=Telegram(placeholder=json_dict["telegram"]["placeholder"]),
+            spy_entries=[
+                SpyEntry(
+                    url=entry["url"],
+                    interval_seconds=entry["interval_seconds"],
+                    img_path=Path(entry["img_path"]),
+                )
+                for entry in json_dict["spy_entries"]
+            ],
+        )
+
+    @property
+    def config(self) -> Config:
+        return self.__config
+
+    @config.setter
+    def config(self, value: Config):
+        self.__config = value
+        self.notify()
 
     @property
     def telegram(self) -> Telegram:
@@ -92,20 +118,22 @@ class ConfigHandler:
             return cls.__instance
         return cls.__instance
 
-    def __init__(self, config: ConfigManager, path_manager: utils.PathManager):
+    def __init__(self, config_manager: ConfigManager, path_manager: utils.PathManager):
         if self.__initialized:
             return
 
-        self.config = config
+        self.config_manager = config_manager
         self.path_manager = path_manager
 
-        self.config.subscribe(self.update_config)
+        self.config_manager.subscribe(self.update_config)
 
         self.init_config_json()
 
         try:
             self.open = open(self.path_manager.config_file, "r+")
-            self.json = json_load(self.open)
+            self.config_manager.config = self.config_manager.from_json_dict(
+                json_load(self.open)
+            )
         except IOError as error:
             print(f"Failed to open or parse the config file: {error}")
             sys_exit(1)
@@ -116,24 +144,21 @@ class ConfigHandler:
         if not self.path_manager.config_file.exists():
             try:
                 with open(self.path_manager.config_file, "w") as file:
-                    json_dump(self.config.to_dict(), file, indent=4)
+                    json_dump(self.config_manager.to_json_dict(), file, indent=4)
                 return
             except IOError as error:
                 print(f"Failed to write to the config file: {error}")
                 sys_exit(1)
 
-        self.validate_config_json()
-
-    def validate_config_json(self) -> bool:
-        # TODO: deep compare if the structure of the Config is same as config.json
-        return True
-
     async def update_config(self):
         """Asynchronously update the config file upon notification."""
+        if not self.__initialized:
+            return
+
         await asyncio.sleep(0)
         self.open.seek(0)
         self.open.truncate()
-        json_dump(self.config.to_dict(), self.open, indent=4)
+        json_dump(self.config_manager.to_json_dict(), self.open, indent=4)
         self.open.flush()
 
     def __enter__(self):
