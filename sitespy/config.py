@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List, Callable, Dict
+from typing import Any, List, Callable, Dict, Coroutine
 from json import load as json_load
 from json import dump as json_dump
 from sys import exit as sys_exit
@@ -30,16 +30,16 @@ class Config:
 class ConfigManager:
     """
     ConfigManager manages operations on config.
-    It is a publisher to Callable objects, who notifies about config changes.
+    It is a publisher to Async Callable objects, who notifies about config changes.
     """
 
     def __init__(self):
         self.__config = Config()
 
-        self.__subscribers: List[Callable] = []
+        self.__subscribers: List[Callable[..., Coroutine[Any, Any, Any]]] = []
         self.__loop = asyncio.get_running_loop()
 
-    def subscribe(self, callback: Callable):
+    def subscribe(self, callback: Callable[..., Coroutine[Any, Any, Any]]):
         self.__subscribers.append(callback)
 
     def notify(self):
@@ -59,8 +59,9 @@ class ConfigManager:
             ],
         }
 
-    def from_json_dict(self, json_dict: Dict) -> Config:
-        # validate if json_dict is compliant to Config structure
+    @staticmethod
+    def from_json_dict(json_dict: Dict) -> Config:
+        # TODO: validate if json_dict is compliant to Config structure
 
         return Config(
             telegram=Telegram(placeholder=json_dict["telegram"]["placeholder"]),
@@ -108,12 +109,11 @@ class ConfigHandler:
     """
 
     __instance = None
+    __initialized = False
 
     def __new__(cls, *args, **kwargs):
-        """Singleton boilerplate."""
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
-            cls.__initialized = False
             return cls.__instance
         return cls.__instance
 
@@ -130,13 +130,14 @@ class ConfigHandler:
 
         try:
             self.open = open(self.path_manager.config_file, "r+")
-            self.config_manager.config = self.config_manager.from_json_dict(
+            self.config_manager.config = ConfigManager.from_json_dict(
                 json_load(self.open)
             )
         except IOError as error:
             print(f"Failed to open or parse the config file: {error}")
             sys_exit(1)
 
+    def run(self):
         self.__initialized = True
 
     def init_config_json(self):
@@ -151,10 +152,10 @@ class ConfigHandler:
 
     async def update_config(self):
         """Asynchronously update the config file upon notification."""
+        await asyncio.sleep(0)
         if not self.__initialized:
             return
 
-        await asyncio.sleep(0)
         self.open.seek(0)
         self.open.truncate()
         json_dump(self.config_manager.to_json_dict(), self.open, indent=4)
@@ -163,7 +164,7 @@ class ConfigHandler:
     def __enter__(self):
         return self
 
-    def __exit__(self, exception_type, exception_value, exception_traceback):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         if self.open is not None:
             self.open.close()
 
@@ -177,7 +178,8 @@ if __name__ == "__main__":
         path_manager = PathManager(platform)
 
         config_manager = ConfigManager()
-        ConfigHandler(config_manager, path_manager)
+        ConfigHandler(config_manager, path_manager).run()
+
         config_manager.telegram = Telegram(placeholder="123")
         print("Config updated.")
         await asyncio.sleep(2)
