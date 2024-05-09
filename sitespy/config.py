@@ -1,13 +1,13 @@
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, List, Callable, Dict, Coroutine
-from json import load as json_load
-from json import dump as json_dump
-from sys import exit as sys_exit
 import asyncio
+from dataclasses import dataclass, field
+from json import dump as json_dump
+from json import load as json_load
+from pathlib import Path
+from sys import exit as sys_exit
+from typing import Any, List, Callable, Dict, Coroutine
 
-from .telegram import Telegram
 from . import utils
+from .telegram import Telegram
 
 
 @dataclass
@@ -137,8 +137,9 @@ class ConfigHandler:
             print(f"Failed to open or parse the config file: {error}")
             sys_exit(1)
 
-    def run(self):
         self.__initialized = True
+
+    def run(self): ...
 
     def init_config_json(self):
         if not self.path_manager.config_file.exists():
