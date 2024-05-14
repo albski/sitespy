@@ -1,37 +1,36 @@
 import asyncio
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Dict, Tuple
+
 import httpx
 
-# from abc import ABC, abstractmethod
-#
-#
-# class TelegramData(ABC):
-#
-#     @abstractmethod
-#     def validate(self): ...
-#
-#
-# class TelegramToken:
-#     def __init__(self, token: str):
-#         self.token = token
-#         self.validate()
-#
-#     def validate(self): ...
-#
-#
-# class TelegramChatID:
-#     def __init__(self, chat_id: str):
-#         self.chat_id = chat_id
-#         self.validate()
-#
-#     def validate(self): ...
+
+class TelegramData(ABC):
+    @abstractmethod
+    def validate(self): ...
+
+
+class TelegramToken:
+    def __init__(self, token: str):
+        self.token = token
+        self.validate()
+
+    def validate(self): ...
+
+
+class TelegramChatID:
+    def __init__(self, chat_id: str):
+        self.chat_id = chat_id
+        self.validate()
+
+    def validate(self): ...
 
 
 @dataclass
 class Telegram:
-    token: str  # TelegramToken
-    chat_ids: List[str]  # List[TelegramChatID]
+    token: TelegramToken
+    chat_ids: List[TelegramChatID]
 
 
 class AsyncTelegramBot:
@@ -43,24 +42,29 @@ class AsyncTelegramBot:
 
     async def send_message(self, text: str):
         url = self.api_url + "sendMessage"
-        client = self.client
 
-        async def send_message_(chat_id):
-            nonlocal url, text, client
+        async def send_message_to_chat(
+            http_client: httpx.AsyncClient, chat_id: TelegramChatID
+        ):
+            nonlocal url, text
 
             await asyncio.sleep(0)
             payload = {"chat_id": chat_id, "text": text}
-            response = await client.post(url, json=payload)
 
-            return {chat_id: str(response)}
+            async with asyncio.timeout(5):
+                response = await http_client.post(url, json=payload)
+                response.raise_for_status()
+                return {chat_id: str(response)}
 
-        tasks = [send_message_(chat_id) for chat_id in self.telegram_data.chat_ids]
-        gather = asyncio.gather(*tasks)
-        results: Tuple[Dict[str, str]] = await gather
+        tasks = [
+            send_message_to_chat(self.client, chat_id)
+            for chat_id in self.telegram_data.chat_ids
+        ]
+        gather_results = asyncio.gather(*tasks, return_exceptions=True)
+        results: Tuple[Dict[str, str]] = await gather_results
 
         for result in results:
             print(result.items())
-            # todo: handle results in proper manner
 
     async def __aenter__(self):
         return self
