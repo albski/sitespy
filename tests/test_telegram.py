@@ -25,6 +25,6 @@ async def test_telegram(httpx_mock: pytest_httpx.HTTPXMock):
         status_code=200,
     )
 
-    results = await bot.send_message("Hello, World!")
-    print(results)
+    results = await bot.send_message("Hello, World!", in_background=False)
+    print("Results from send_message:", results)
     assert len(httpx_mock.get_requests()) == 3
