@@ -1,36 +1,29 @@
 import asyncio
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Dict, Tuple
-
+from typing import List, Dict
 import httpx
 
 
-class TelegramData(ABC):
-    @abstractmethod
-    def validate(self): ...
+# class TelegramToken:
+#     def __init__(self, token: str):
+#         self.token = token
+#         self.validate()
+
+#     def validate(self): ...
 
 
-class TelegramToken:
-    def __init__(self, token: str):
-        self.token = token
-        self.validate()
+# class TelegramChatID:
+#     def __init__(self, chat_id: str):
+#         self.chat_id = chat_id
+#         self.validate()
 
-    def validate(self): ...
-
-
-class TelegramChatID:
-    def __init__(self, chat_id: str):
-        self.chat_id = chat_id
-        self.validate()
-
-    def validate(self): ...
+#     def validate(self): ...
 
 
 @dataclass
 class Telegram:
-    token: TelegramToken
-    chat_ids: List[TelegramChatID]
+    token: str
+    chat_ids: List[str]
 
 
 class AsyncTelegramBot:
@@ -44,8 +37,9 @@ class AsyncTelegramBot:
         url = self.api_url + "sendMessage"
 
         async def send_message_to_chat(
-            http_client: httpx.AsyncClient, chat_id: TelegramChatID
-        ):
+            http_client: httpx.AsyncClient, chat_id: str
+        ) -> Dict[str, int]:
+            """Returns {chat_id: status_code}"""
             nonlocal url, text
 
             await asyncio.sleep(0)
@@ -53,18 +47,14 @@ class AsyncTelegramBot:
 
             async with asyncio.timeout(5):
                 response = await http_client.post(url, json=payload)
-                response.raise_for_status()
-                return {chat_id: str(response)}
+                return {chat_id: response.status_code}
 
         tasks = [
             send_message_to_chat(self.client, chat_id)
             for chat_id in self.telegram_data.chat_ids
         ]
-        gather_results = asyncio.gather(*tasks, return_exceptions=True)
-        results: Tuple[Dict[str, str]] = await gather_results
 
-        for result in results:
-            print(result.items())
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     async def __aenter__(self):
         return self
