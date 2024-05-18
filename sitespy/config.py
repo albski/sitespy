@@ -2,6 +2,7 @@ import asyncio
 from dataclasses import dataclass, field
 from json import dump as json_dump
 from json import load as json_load
+import json
 from pathlib import Path
 from sys import exit as sys_exit
 from typing import Any, List, Callable, Dict, Coroutine
@@ -23,14 +24,16 @@ class SpyEntry:
 class Config:
     """Config represents a data structured in config.json."""
 
-    telegram: Telegram = field(default_factory=lambda: Telegram(placeholder=""))
+    telegram: Telegram = field(
+        default_factory=lambda: Telegram(token="", chat_ids=[""])
+    )
     spy_entries: List[SpyEntry] = field(default_factory=list)
 
 
 class ConfigManager:
     """
     ConfigManager manages operations on config.
-    It is a publisher to Async Callable objects, who notifies about config changes.
+    It is a publisher to Async Callable objects who notifies about config changes.
     """
 
     def __init__(self):
@@ -48,7 +51,10 @@ class ConfigManager:
 
     def to_json_dict(self) -> dict[Any, Any]:
         return {
-            "telegram": {"placeholder": self.__config.telegram.placeholder},
+            "telegram": {
+                "token": self.__config.telegram.token,
+                "chat_ids": [chat_id for chat_id in self.__config.telegram.chat_ids],
+            },
             "spy_entries": [
                 {
                     "url": entry.url,
@@ -64,7 +70,10 @@ class ConfigManager:
         # TODO: validate if json_dict is compliant to Config structure
 
         return Config(
-            telegram=Telegram(placeholder=json_dict["telegram"]["placeholder"]),
+            telegram=Telegram(
+                token=json_dict["telegram"]["token"],
+                chat_ids=[chat_id for chat_id in json_dict["telegram"]["chat_ids"]],
+            ),
             spy_entries=[
                 SpyEntry(
                     url=entry["url"],
@@ -181,7 +190,7 @@ if __name__ == "__main__":
         config_manager = ConfigManager()
         ConfigHandler(config_manager, path_manager).run()
 
-        config_manager.telegram = Telegram(placeholder="123")
+        config_manager.telegram = Telegram(token="123", chat_ids=["123"])
         print("Config updated.")
         await asyncio.sleep(2)
 
