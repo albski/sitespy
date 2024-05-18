@@ -4,22 +4,6 @@ from typing import List, Dict
 import httpx
 
 
-# class TelegramToken:
-#     def __init__(self, token: str):
-#         self.token = token
-#         self.validate()
-
-#     def validate(self): ...
-
-
-# class TelegramChatID:
-#     def __init__(self, chat_id: str):
-#         self.chat_id = chat_id
-#         self.validate()
-
-#     def validate(self): ...
-
-
 @dataclass
 class Telegram:
     token: str
