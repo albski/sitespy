@@ -33,7 +33,7 @@ class AsyncTelegramBot:
 
         self.client = httpx.AsyncClient()
 
-    async def send_message(self, text: str):
+    async def send_message(self, text: str, in_background: bool):
         url = self.api_url + "sendMessage"
 
         async def send_message_to_chat(
@@ -53,6 +53,11 @@ class AsyncTelegramBot:
             send_message_to_chat(self.client, chat_id)
             for chat_id in self.telegram_data.chat_ids
         ]
+
+        if in_background:
+            loop = asyncio.get_event_loop()
+            [loop.create_task(task) for task in tasks]
+            return
 
         await asyncio.gather(*tasks, return_exceptions=True)
 
