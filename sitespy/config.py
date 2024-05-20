@@ -2,12 +2,11 @@ import asyncio
 from dataclasses import dataclass, field
 from json import dump as json_dump
 from json import load as json_load
-import json
 from pathlib import Path
 from sys import exit as sys_exit
 from typing import Any, List, Callable, Dict, Coroutine
 
-from . import utils
+from . import path
 from .telegram import Telegram
 
 
@@ -126,7 +125,7 @@ class ConfigHandler:
             return cls.__instance
         return cls.__instance
 
-    def __init__(self, config_manager: ConfigManager, path_manager: utils.PathManager):
+    def __init__(self, config_manager: ConfigManager, path_manager: path.PathManager):
         if self.__initialized:
             return
 
@@ -177,21 +176,3 @@ class ConfigHandler:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if self.open is not None:
             self.open.close()
-
-
-if __name__ == "__main__":
-    from sitespy.utils import PathManager, Platform
-    import sys
-
-    async def main():
-        platform = Platform.from_string(sys.platform)
-        path_manager = PathManager(platform)
-
-        config_manager = ConfigManager()
-        ConfigHandler(config_manager, path_manager).run()
-
-        config_manager.telegram = Telegram(token="123", chat_ids=["123"])
-        print("Config updated.")
-        await asyncio.sleep(2)
-
-    asyncio.run(main())
