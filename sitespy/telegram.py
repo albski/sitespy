@@ -17,7 +17,7 @@ class AsyncTelegramBot:
 
         self.client = httpx.AsyncClient()
 
-    async def send_message(self, text: str, in_background: bool):
+    async def send_message(self, text: str, in_background: bool = True):
         url = self.api_url + "sendMessage"
 
         async def send_message_to_chat(
