@@ -1,3 +1,3 @@
 ### sitespy is a terminal-driven visual change detector for websites
 
-The project suspended due to a willingness to explore more Go. Find this project in Go [here](https://github.com/albski/deltasite 'Δsite').
+The project is suspended due to a willingness to explore more Go. Find this project in Go [here](https://github.com/albski/deltasite 'Δsite').
